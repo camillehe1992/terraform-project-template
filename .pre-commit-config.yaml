@@ -26,7 +26,10 @@ repos:
     rev: v0.48.0
     hooks:
       - id: markdownlint
-        args: [--config=.markdownlint.json]
+        args:
+          - --config=.markdownlint.json
+          - --fix
+        exclude: README.md # Exclude the main README file
 
   - repo: https://github.com/antonbabenko/pre-commit-terraform
     rev: v1.88.0

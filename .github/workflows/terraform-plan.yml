@@ -44,7 +44,7 @@ jobs:
 
       - name: Terraform Init
         run: |
-          -reconfigure \
+          terraform init -reconfigure \
             -backend-config="bucket=terraform-state-$AWS_ACCOUNT_ID-$AWS_REGION" \
             -backend-config="key=$GITHUB_REPO_NAME/dev/terraform.tfstate" \
             -backend-config="region=$AWS_REGION" \
