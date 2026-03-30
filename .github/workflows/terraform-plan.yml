@@ -60,10 +60,10 @@ jobs:
         id: plan
         run: |
           # Run terraform plan and capture output with exit code
-          set +e  # Allow the command to fail without stopping the script
-          PLAN_OUTPUT=$(terraform plan -detailed-exitcode -no-color 2>&1)
+
+          terraform plan -detailed-exitcode -no-color 2>&1 > plan.log
           PLAN_EXIT_CODE=$?
-          set -e  # Re-enable exit on error
+          PLAN_OUTPUT=$(cat plan.log)
 
           # Debug output to verify exit code capture
           echo "Debug: Terraform plan exit code: $PLAN_EXIT_CODE"
