@@ -92,6 +92,22 @@ jobs:
         run: |
           echo "Debug: plan_exit_code value: '${{ steps.plan.outputs.plan_exit_code }}'"
           echo "Debug: plan_exit_code length: $(echo -n '${{ steps.plan.outputs.plan_exit_code }}' | wc -c)"
+          echo "Debug: Expected exit code 2 for changes, but got: '${{ steps.plan.outputs.plan_exit_code }}'"
+          echo "Debug: This suggests terraform plan returned 0 instead of 2"
+
+      - name: Show Plan Output Summary
+        run: |
+          echo "## 📋 Terraform Plan Output" >> $GITHUB_STEP_SUMMARY
+          echo '```terraform' >> $GITHUB_STEP_SUMMARY
+          cat << 'EOF' >> $GITHUB_STEP_SUMMARY
+          ${{ steps.plan.outputs.plan_output }}
+          EOF
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔍 Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "- Exit Code: ${{ steps.plan.outputs.plan_exit_code }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Expected: 2 (changes), 0 (no changes), or 1 (error)" >> $GITHUB_STEP_SUMMARY
+          echo "- Timestamp: $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY"
 
       - name: Fallback Debug Summary
         if: always() && steps.plan.outputs.plan_exit_code != '0' && steps.plan.outputs.plan_exit_code != '2'
@@ -117,6 +133,7 @@ jobs:
           echo "- Review required: ⚠️ Yes" >> $GITHUB_STEP_SUMMARY
           echo "- Action: Please review the plan output above before proceeding" >> $GITHUB_STEP_SUMMARY
           echo "- Timestamp: $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "- Exit Code Confirmed: 2" >> $GITHUB_STEP_SUMMARY
 
       - name: Add No Changes Summary to GitHub
         if: steps.plan.outputs.plan_exit_code == '0'
