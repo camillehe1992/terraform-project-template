@@ -23,8 +23,6 @@ jobs:
     defaults:
       run:
         working-directory: ./terraform
-    outputs:
-      plan_exit_code: ${{ steps.plan.outputs.plan_exit_code }}
 
     steps:
       - name: Checkout code
@@ -61,65 +59,44 @@ jobs:
         run: |
           # Run terraform plan and capture output with exit code
 
-          terraform plan -detailed-exitcode
-          echo "Exit code: $?"
-
+          PLAN_OUTPUT=$(terraform plan -detailed-exitcode -no-color 2>&1)
           PLAN_EXIT_CODE=$?
-
-          terraform plan -detailed-exitcode -no-color 2>&1 > plan.log
-          PLAN_EXIT_CODE=$?
-          PLAN_OUTPUT=$(cat plan.log)
-
-          # Debug output to verify exit code capture
-          echo "Debug: Terraform plan exit code: $PLAN_EXIT_CODE"
-          echo "Debug: Exit code type: $(type $PLAN_EXIT_CODE 2>/dev/null || echo 'integer')"
 
           # Always show the plan output
           echo "$PLAN_OUTPUT"
+          echo "Final exit code: $PLAN_EXIT_CODE"
 
           # Store exit code immediately (0=no changes, 1=error, 2=changes detected)
           echo "plan_exit_code=$PLAN_EXIT_CODE" >> $GITHUB_OUTPUT
 
-          # Store plan output using proper multiline format for GitHub Actions
-          {
-            echo 'plan_output<<EOF'
-            echo "$PLAN_OUTPUT"
-            echo 'EOF'
-          } >> $GITHUB_OUTPUT
-
-          # Exit with error code if terraform plan failed (exit code 1)
-          if [ $PLAN_EXIT_CODE -eq 1 ]; then
-            echo "Terraform plan failed with exit code 1"
+          # Interpret the exit code:
+          # 0 = No changes
+          # 1 = Error
+          # 2 = Changes detected
+          if [ ${PLAN_EXIT_CODE} -eq 2 ]; then
+            echo "plan_exit_code=2" >> $GITHUB_OUTPUT
+            echo "[*] ✅ Changes detected in Terraform plan"
+          elif [ ${PLAN_EXIT_CODE} -eq 0 ]; then
+            echo "plan_exit_code=0" >> $GITHUB_OUTPUT
+            echo "[*] ✅ No changes detected in Terraform plan"
+          else
+            echo "plan_exit_code=1" >> $GITHUB_OUTPUT
+            echo "[!] ❌ Terraform plan failed with exit code: ${PLAN_EXIT_CODE}"
             exit 1
           fi
-
-      - name: Debug Plan Output
-        run: |
-          echo "Debug: plan_exit_code value: '${{ steps.plan.outputs.plan_exit_code }}'"
-          echo "Debug: plan_exit_code length: $(echo -n '${{ steps.plan.outputs.plan_exit_code }}' | wc -c)"
-          echo "Debug: Expected exit code 2 for changes, but got: '${{ steps.plan.outputs.plan_exit_code }}'"
-          echo "Debug: This suggests terraform plan returned 0 instead of 2"
 
       - name: Show Plan Output Summary
         run: |
           echo "## 📋 Terraform Plan Output" >> $GITHUB_STEP_SUMMARY
           echo '```terraform' >> $GITHUB_STEP_SUMMARY
           cat << 'EOF' >> $GITHUB_STEP_SUMMARY
-          ${{ steps.plan.outputs.plan_output }}
-          EOF
+          echo ${{ steps.plan.outputs.plan_output }} >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔍 Analysis" >> $GITHUB_STEP_SUMMARY
           echo "- Exit Code: ${{ steps.plan.outputs.plan_exit_code }}" >> $GITHUB_STEP_SUMMARY
           echo "- Expected: 2 (changes), 0 (no changes), or 1 (error)" >> $GITHUB_STEP_SUMMARY
           echo "- Timestamp: $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY"
-
-      - name: Fallback Debug Summary
-        if: always() && steps.plan.outputs.plan_exit_code != '0' && steps.plan.outputs.plan_exit_code != '2'
-        run: |
-          echo "## ⚠️ Debug: Unexpected Plan Exit Code" >> $GITHUB_STEP_SUMMARY
-          echo "Debug: plan_exit_code = '${{ steps.plan.outputs.plan_exit_code }}'" >> $GITHUB_STEP_SUMMARY
-          echo "Debug: This might indicate an issue with exit code capture" >> $GITHUB_STEP_SUMMARY
 
       - name: Add Plan Summary to GitHub
         if: steps.plan.outputs.plan_exit_code == '2'
