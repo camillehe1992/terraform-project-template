@@ -10,7 +10,7 @@ jobs:
   terraform:
     name: Terraform Validate and Plan
     runs-on: ubuntu-latest
-    default:
+    defaults:
       run:
         working-directory: ./terraform
 
