@@ -14,7 +14,7 @@ env:
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   AWS_REGION: ${{ secrets.AWS_REGION }}
   ROLE_TO_ASSUME: ${{ secrets.ROLE_TO_ASSUME }}
-  GITHUB_REPO_NAME: ${{ github.repository }}
+  GITHUB_REPO_NAME: ${{ github.repository.name }}
 
 jobs:
   terraform:
@@ -57,17 +57,22 @@ jobs:
       - name: Terraform Plan
         id: plan
         run: |
+          # Run terraform plan and capture output
           PLAN_OUTPUT=$(terraform plan -detailed-exitcode -no-color 2>&1)
           PLAN_EXIT_CODE=$?
-          echo "$PLAN_OUTPUT"
 
-          # Store plan output for later steps
-          echo "plan_output<<EOF" >> $GITHUB_OUTPUT
-          echo "$PLAN_OUTPUT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # Always show the plan output
+          echo "$PLAN_OUTPUT"
 
           # Store exit code (0=no changes, 1=error, 2=changes detected)
           echo "plan_exit_code=$PLAN_EXIT_CODE" >> $GITHUB_OUTPUT
+
+          # Store plan output using proper multiline format for GitHub Actions
+          {
+            echo 'plan_output<<EOF'
+            echo "$PLAN_OUTPUT"
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
 
           # Exit with error code if terraform plan failed (exit code 1)
           if [ $PLAN_EXIT_CODE -eq 1 ]; then
@@ -81,10 +86,24 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📋 Plan Details" >> $GITHUB_STEP_SUMMARY
           echo '```terraform' >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.plan.outputs.plan_output }}" >> $GITHUB_STEP_SUMMARY
+          cat << 'EOF' >> $GITHUB_STEP_SUMMARY
+          ${{ steps.plan.outputs.plan_output }}
+          EOF
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔍 Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- Plan Status: Changes detected" >> $GITHUB_STEP_SUMMARY
-          echo "- Review required: Yes" >> $GITHUB_STEP_SUMMARY
+          echo "- Plan Status: ✅ Changes detected" >> $GITHUB_STEP_SUMMARY
+          echo "- Review required: ⚠️ Yes" >> $GITHUB_STEP_SUMMARY
           echo "- Action: Please review the plan output above before proceeding" >> $GITHUB_STEP_SUMMARY
+          echo "- Timestamp: $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+
+      - name: Add No Changes Summary to GitHub
+        if: steps.plan.outputs.plan_exit_code == '0'
+        run: |
+          echo "## ✅ No Terraform Changes Detected" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Status" >> $GITHUB_STEP_SUMMARY
+          echo "- Plan Status: No changes detected" >> $GITHUB_STEP_SUMMARY
+          echo "- Review required: No" >> $GITHUB_STEP_SUMMARY
+          echo "- Action: Infrastructure is up to date" >> $GITHUB_STEP_SUMMARY
+          echo "- Timestamp: $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
