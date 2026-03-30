@@ -1,7 +1,10 @@
 data "aws_caller_identity" "current" {}
 
-data "aws_region" "current" {}
+locals {
+  datetime_suffix = formatdate("YYYYMMDDhhmmss", timestamp())
+  bucket_name     = "my-bucket-${data.aws_caller_identity.current.account_id}-${local.datetime_suffix}"
+}
 
 resource "aws_s3_bucket" "hello_world" {
-  bucket = "my-hello-world-bucket-for-demo-${data.aws_region.current.region}"
+  bucket = local.bucket_name
 }

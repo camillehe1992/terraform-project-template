@@ -55,7 +55,36 @@ jobs:
         run: terraform validate
 
       - name: Terraform Plan
-        run: terraform plan
-        env:
-          # Add your environment variables here
-          TF_VAR_example: "value"
+        id: plan
+        run: |
+          PLAN_OUTPUT=$(terraform plan -detailed-exitcode -no-color 2>&1)
+          PLAN_EXIT_CODE=$?
+          echo "$PLAN_OUTPUT"
+
+          # Store plan output for later steps
+          echo "plan_output<<EOF" >> $GITHUB_OUTPUT
+          echo "$PLAN_OUTPUT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          # Store exit code (0=no changes, 1=error, 2=changes detected)
+          echo "plan_exit_code=$PLAN_EXIT_CODE" >> $GITHUB_OUTPUT
+
+          # Exit with error code if terraform plan failed (exit code 1)
+          if [ $PLAN_EXIT_CODE -eq 1 ]; then
+            exit 1
+          fi
+
+      - name: Add Plan Summary to GitHub
+        if: steps.plan.outputs.plan_exit_code == '2'
+        run: |
+          echo "## 🚀 Terraform Plan Changes Detected" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Plan Details" >> $GITHUB_STEP_SUMMARY
+          echo '```terraform' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.plan.outputs.plan_output }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔍 Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Plan Status: Changes detected" >> $GITHUB_STEP_SUMMARY
+          echo "- Review required: Yes" >> $GITHUB_STEP_SUMMARY
+          echo "- Action: Please review the plan output above before proceeding" >> $GITHUB_STEP_SUMMARY
