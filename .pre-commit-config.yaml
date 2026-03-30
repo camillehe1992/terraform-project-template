@@ -45,7 +45,6 @@ exclude: |
   (?x)^(
     \.terraform/.*|
     \.git/.*|
-    docs/*.*|
     node_modules/.*|
     vendor/.*|
     \.idea/.*|
