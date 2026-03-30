@@ -1,4 +1,4 @@
-# GitHub Actions Workflows Setup
+# Setup GitHub Actions Workflows
 
 ## Terraform Plan Workflow
 
