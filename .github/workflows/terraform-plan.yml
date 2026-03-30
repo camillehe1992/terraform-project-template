@@ -14,6 +14,7 @@ env:
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   AWS_REGION: ${{ secrets.AWS_REGION }}
   ROLE_TO_ASSUME: ${{ secrets.ROLE_TO_ASSUME }}
+  GITHUB_REPO_NAME: ${{ github.repository }}
 
 jobs:
   terraform:
@@ -44,9 +45,9 @@ jobs:
       - name: Terraform Init
         run: |
           -reconfigure \
-            -backend-config="bucket=terraform-state-${env.AWS_ACCOUNT_ID }}-${env.AWS_REGION }}" \
-            -backend-config="key=terraform-project-template/dev/terraform.tfstate" \
-            -backend-config="region=${env.AWS_REGION }}" \
+            -backend-config="bucket=terraform-state-$AWS_ACCOUNT_ID-$AWS_REGION" \
+            -backend-config="key=$GITHUB_REPO_NAME/dev/terraform.tfstate" \
+            -backend-config="region=$AWS_REGION" \
             -backend-config="encrypt=true" \
             -backend-config="use_lockfile=true"
 
