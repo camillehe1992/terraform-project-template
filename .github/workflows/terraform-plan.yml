@@ -10,6 +10,11 @@ permissions:
   contents: read
   id-token: write
 
+env:
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ROLE_TO_ASSUME: ${{ secrets.ROLE_TO_ASSUME }}
+
 jobs:
   terraform:
     name: Terraform Validate and Plan
@@ -30,14 +35,20 @@ jobs:
       - name: Configure AWS Credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          role-to-assume: ${{ secrets.ROLE_TO_ASSUME }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
 
       - name: Terraform Init
-        run: terraform init
+        run: |
+          -reconfigure \
+            -backend-config="bucket=terraform-state-${env.AWS_ACCOUNT_ID }}-${env.AWS_REGION }}" \
+            -backend-config="key=terraform-project-template/dev/terraform.tfstate" \
+            -backend-config="region=${env.AWS_REGION }}" \
+            -backend-config="encrypt=true" \
+            -backend-config="use_lockfile=true"
 
       - name: Terraform Validate
         run: terraform validate
