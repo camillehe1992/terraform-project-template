@@ -5,7 +5,7 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main]
-  # allow manual trigger
+  # allow manual trigger from GitHub Actions UI
   workflow_dispatch:
     inputs:
       environment:
@@ -22,7 +22,9 @@ env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   ROLE_TO_ASSUME: ${{ secrets.ROLE_TO_ASSUME }}
   GITHUB_REPO_NAME: ${{ github.event.repository.name }}
-  ENVIRONMENT: ${{ inputs.environment }}
+  # set default environment to dev for auto triggered workflows
+  ENVIRONMENT: ${{ inputs.environment || 'dev' }}
+  TRIGGER_TYPE: ${{ github.event_name }}
 
 jobs:
   terraform:
@@ -109,6 +111,7 @@ jobs:
         run: |
           echo "### 🔍 Summary" >> $GITHUB_STEP_SUMMARY
           echo "- Environment: $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+          echo "- Trigger Type: $TRIGGER_TYPE" >> $GITHUB_STEP_SUMMARY
           echo "- Exit Code: $EXIT_CODE" >> $GITHUB_STEP_SUMMARY
           echo "- Plan Status: $PLAN_STATUS" >> $GITHUB_STEP_SUMMARY
           echo "- Expected: 2 (changes), 0 (no changes), or 1 (error)" >> $GITHUB_STEP_SUMMARY
@@ -128,3 +131,4 @@ jobs:
           echo "exit_code=${{ steps.plan.outputs.exit_code }}" >> $GITHUB_OUTPUT
           echo "plan_status=${{ steps.plan.outputs.plan_status }}" >> $GITHUB_OUTPUT
           echo "environment=${ENVIRONMENT}" >> $GITHUB_OUTPUT
+          echo "trigger_type=${TRIGGER_TYPE}" >> $GITHUB_OUTPUT
