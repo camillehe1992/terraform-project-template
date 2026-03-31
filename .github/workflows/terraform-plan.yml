@@ -86,9 +86,7 @@ jobs:
         run: |
           echo "## 📋 Terraform Plan Output" >> $GITHUB_STEP_SUMMARY
           echo '```terraform' >> $GITHUB_STEP_SUMMARY
-          cat << 'EOF' >> $GITHUB_STEP_SUMMARY
-          ${{ steps.plan.outputs.plan_output }}
-          EOF
+          echo ${{ steps.plan.outputs.plan_output }} >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
@@ -105,9 +103,7 @@ jobs:
 
           echo "### 📋 Plan Details" >> $GITHUB_STEP_SUMMARY
           echo '```terraform' >> $GITHUB_STEP_SUMMARY
-          cat << 'EOF' >> $GITHUB_STEP_SUMMARY
-          ${{ steps.plan.outputs.plan_output }}
-          EOF
+          echo ${{ steps.plan.outputs.plan_output }} >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
