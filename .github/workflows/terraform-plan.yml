@@ -96,3 +96,11 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "${{ steps.terraform-plan.outputs.plan_output }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Final Result Check
+        run: |
+          EXIT_CODE=${{ steps.plan.outputs.exit_code }}
+          if [ $EXIT_CODE -eq 1 ]; then
+            echo "❌ Plan failed"
+            exit 1
+          fi
