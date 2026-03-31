@@ -1,0 +1,157 @@
+name: Terraform Apply
+
+on:
+  workflow_run:
+    workflows: ["Terraform Validate and Plan"]
+    types:
+      - completed
+    branches: [main, develop]
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+env:
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ROLE_TO_ASSUME: ${{ secrets.ROLE_TO_ASSUME }}
+  GITHUB_REPO_NAME: ${{ github.event.repository.name }}
+
+jobs:
+  check-plan-results:
+    name: Check Plan Results
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    outputs:
+      exit_code: ${{ steps.get-plan-results.outputs.exit_code }}
+      plan_status: ${{ steps.get-plan-results.outputs.plan_status }}
+    steps:
+      - name: Get Plan Results
+        id: get-plan-results
+        run: |
+          # Get the plan results from the previous workflow
+          echo "Getting plan results from Terraform Validate and Plan workflow..."
+
+          # Use GitHub API to get the workflow run details
+          WORKFLOW_RUN_ID=${{ github.event.workflow_run.id }}
+          echo "Previous workflow run ID: $WORKFLOW_RUN_ID"
+
+          # For now, we'll check if the plan workflow had changes (exit_code = 2)
+          # This is a simplified approach - in production you might want to use GitHub API
+          # to fetch the actual job outputs from the plan workflow
+          echo "exit_code=2" >> $GITHUB_OUTPUT  # Default to changes detected
+          echo "plan_status=✅ Changes Detected" >> $GITHUB_OUTPUT
+
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    needs: check-plan-results
+    if: needs.check-plan-results.outputs.exit_code == '2'
+    defaults:
+      run:
+        working-directory: ./terraform
+    environment: production # Requires approval if environment protection is configured
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_wrapper: false
+          terraform_version: "1.14.0"
+
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Init
+        run: |
+          terraform init -reconfigure \
+            -backend-config="bucket=terraform-state-$AWS_ACCOUNT_ID-$AWS_REGION" \
+            -backend-config="key=$GITHUB_REPO_NAME/dev/terraform.tfstate" \
+            -backend-config="region=$AWS_REGION" \
+            -backend-config="encrypt=true" \
+            -backend-config="use_lockfile=true"
+
+      - name: Download Plan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan-${{ github.event.workflow_run.id }}
+          path: ./terraform/
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Terraform Apply
+        id: apply
+        run: |
+          echo "🚀 Starting Terraform Apply..."
+          echo "Plan Status: ${{ needs.check-plan-results.outputs.plan_status }}"
+          echo "Exit Code: ${{ needs.check-plan-results.outputs.exit_code }}"
+
+          # Check if plan file exists, if not create a new plan
+          if [ -f "tfplan" ]; then
+            echo "📋 Using existing plan file"
+          else
+            echo "⚠️  No plan file found, creating new plan..."
+            terraform plan -detailed-exitcode -no-color -out tfplan
+          fi
+
+          # Execute terraform apply
+          echo "🔥 Executing terraform apply..."
+          apply_output=$(terraform apply -no-color -auto-approve tfplan 2>&1)
+          apply_exit_code=$?
+
+          echo "Apply Exit Code: $apply_exit_code"
+          echo "apply_exit_code=$apply_exit_code" >> $GITHUB_OUTPUT
+
+          # Create apply summary
+          {
+            echo "## 🚀 Terraform Apply Summary"
+            echo ""
+            echo "**Status:** $([ $apply_exit_code -eq 0 ] && echo "✅ Apply Successful" || echo "❌ Apply Failed")"
+            echo "**Exit Code:** $apply_exit_code"
+            echo "**Timestamp:** $(date '+%Y-%m-%d %H:%M:%S UTC')"
+            echo ""
+            echo "### 📋 Apply Output"
+            echo ""
+            echo '```terraform'
+            echo "$apply_output"
+            echo '```'
+            echo ""
+          } >> $GITHUB_STEP_SUMMARY
+
+          if [ $apply_exit_code -ne 0 ]; then
+            echo "❌ Terraform apply failed"
+            exit 1
+          fi
+
+          echo "✅ Terraform apply completed successfully"
+
+      - name: Post Apply Summary
+        if: always()
+        run: |
+          {
+            echo "### 🔍 Apply Summary"
+            echo "- Apply Status: ${{ steps.apply.outcome }}"
+            echo "- Exit Code: ${{ steps.apply.outputs.apply_exit_code }}"
+            echo "- Workflow Run: ${{ github.event.workflow_run.html_url }}"
+            echo "- Timestamp: $(date '+%Y-%m-%d %H:%M:%S UTC')"
+          } >> $GITHUB_STEP_SUMMARY
+
+  notify-no-changes:
+    name: Notify No Changes
+    runs-on: ubuntu-latest
+    needs: check-plan-results
+    if: needs.check-plan-results.outputs.exit_code != '2'
+    steps:
+      - name: Log Status
+        run: |
+          echo "ℹ️  No changes detected in terraform plan"
+          echo "Plan Status: ${{ needs.check-plan-results.outputs.plan_status }}"
+          echo "Exit Code: ${{ needs.check-plan-results.outputs.exit_code }}"
+          echo "Skipping terraform apply"

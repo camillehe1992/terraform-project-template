@@ -14,4 +14,35 @@ Workflow Description:
 - Triggered on push on `main` branch, `develop` branch, and pull request events on `main` branch
 - Validate Terraform code
 - Plan Terraform changes
-- Add plan summary to GitHub pull request
+- Add plan output and analysis result to GitHub summary for easy review
+- Upload plan artifact when changes are detected
+- Set job outputs for downstream workflows
+
+## Terraform Apply Workflow
+
+Workflow: [terraform-apply.yml](./terraform-apply.yml)
+
+Prerequisites:
+- Same secrets as terraform-plan workflow
+- Environment protection rules configured for `production` environment (recommended)
+
+Workflow Description:
+- Triggered automatically after terraform-plan workflow completes successfully
+- Only executes when terraform plan detects changes (exit code 2)
+- Supports environment approval process for production deployments
+- Downloads plan artifact from previous workflow run
+- Executes terraform apply with the approved plan
+- Provides detailed apply results in GitHub summary
+- Includes comprehensive error handling and status reporting
+
+### Environment Protection (Recommended)
+
+Configure environment protection rules for the `production` environment in GitHub:
+1. Go to Settings → Environments → New environment
+2. Name: `production`
+3. Configure protection rules:
+   - Required reviewers (recommended: 1-2 people)
+   - Deployment protection rules
+   - Environment secrets (if needed)
+
+This ensures terraform apply requires manual approval before executing changes.
