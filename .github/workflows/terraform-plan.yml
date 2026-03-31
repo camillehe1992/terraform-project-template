@@ -74,17 +74,20 @@ jobs:
 
           echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
 
-          # Capture plan output
-          TERRAFORM_PLAN=$(terraform show -no-color tfplan)
-          echo "plan_output=$TERRAFORM_PLAN" >> $GITHUB_OUTPUT
+          # Store plan output using proper multiline format for GitHub Actions
+          PLAN_OUTPUT=$(terraform show -no-color tfplan)
+          {
+            echo 'plan_output<<EOF'
+            echo "$PLAN_OUTPUT"
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
 
       - name: Show Plan Output Summary
         run: |
           echo "## 📋 Terraform Plan Output" >> $GITHUB_STEP_SUMMARY
-
           echo '```terraform' >> $GITHUB_STEP_SUMMARY
           cat << 'EOF' >> $GITHUB_STEP_SUMMARY
-          echo ${{ steps.plan.outputs.plan_output }} >> $GITHUB_STEP_SUMMARY
+          ${{ steps.plan.outputs.plan_output }}
           EOF
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -103,7 +106,7 @@ jobs:
           echo "### 📋 Plan Details" >> $GITHUB_STEP_SUMMARY
           echo '```terraform' >> $GITHUB_STEP_SUMMARY
           cat << 'EOF' >> $GITHUB_STEP_SUMMARY
-          echo ${{ steps.plan.outputs.plan_output }} >> $GITHUB_STEP_SUMMARY
+          ${{ steps.plan.outputs.plan_output }}
           EOF
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
