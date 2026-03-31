@@ -53,7 +53,9 @@ validate:
 plan: init
   #!/usr/bin/env bash
   echo "Planning Terraform changes"
-  cd terraform && terraform plan -out=terraform.tfplan
+  cd terraform && terraform plan -out=terraform.tfplan -detailed-exitcode -no-color 2>&1
+  status_code=$?
+  echo "Plan exit code: $status_code"
 
 # Apply Terraform changes
 apply:

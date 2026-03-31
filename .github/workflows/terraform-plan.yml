@@ -57,66 +57,36 @@ jobs:
       - name: Terraform Plan
         id: plan
         run: |
-          # Run terraform plan and capture output with proper exit code handling
-          set +e  # Allow the command to fail without stopping the script
-
           # Capture both stdout and stderr, and get exit code
-          terraform plan -detailed-exitcode -no-color -out tfplan
-          PLAN_EXIT_CODE=$?
+          terraform plan -detailed-exitcode -out tfplan -no-color || export exit_code=$?
 
-          set -e  # Re-enable exit on error
-
-          # Show full output for debugging
-          echo "=== Terraform Plan Output ==="
-          echo "$PLAN_OUTPUT"
-          echo "============================="
-          echo "Terraform Exit Code: $PLAN_EXIT_CODE"
+          echo "Terraform Exit Code: $exit_code"
 
           # Validate exit code is what we expect
-          case $PLAN_EXIT_CODE in
+          case $exit_code in
             0) echo "✅ No changes detected" ;;
             1) echo "❌ Plan failed" ;;
             2) echo "✅ Changes detected" ;;
-            *) echo "⚠️  Unexpected exit code: $PLAN_EXIT_CODE" ;;
+            *) echo "⚠️  Unexpected exit code: $exit_code" ;;
           esac
 
-          # Set outputs for next steps
-          echo "exit_code=$PLAN_EXIT_CODE" >> $GITHUB_OUTPUT
-          echo "plan_output<<EOF" >> $GITHUB_OUTPUT
-          echo "$PLAN_OUTPUT"
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
 
-      - name: Add Plan Output to GitHub Summary
-        run: |
-          echo "# 📋 Terraform Plan Result" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          # Capture plan output
+          TERRAFORM_PLAN=$(terraform show -no-color tfplan)
 
-          EXIT_CODE=${{ steps.plan.outputs.exit_code }}
+          delimiter="$(openssl rand -hex 8)"
+          echo "summary<<${delimiter}" >> $GITHUB_OUTPUT
+          echo "#### Terraform Plan Output" >> $GITHUB_OUTPUT
+          echo "<details><summary>Click to expand</summary>" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo '```terraform' >> $GITHUB_OUTPUT
+          echo "$TERRAFORM_PLAN" >> $GITHUB_OUTPUT
+          echo '```' >> $GITHUB_OUTPUT
+          echo "</details>" >> $GITHUB_OUTPUT
+          echo "${delimiter}" >> $GITHUB_OUTPUT
 
-          echo "**Debug: Raw exit code from plan step: '$EXIT_CODE'**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          if [ "$EXIT_CODE" = "0" ]; then
-            echo "✅ **No changes detected**" >> $GITHUB_STEP_SUMMARY
-          elif [ "$EXIT_CODE" = "2" ]; then
-            echo "🚀 **Changes detected**" >> $GITHUB_STEP_SUMMARY
-          elif [ "$EXIT_CODE" = "1" ]; then
-            echo "❌ **Plan failed**" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "⚠️ **Unexpected exit code: $EXIT_CODE**" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Full Plan Output" >> $GITHUB_STEP_SUMMARY
-          echo '```terraform' >> $GITHUB_STEP_SUMMARY
-          cat << 'EOF' >> $GITHUB_STEP_SUMMARY
-          ${{ steps.plan.outputs.plan_output }}
-          EOF
-          echo '```' >> $GITHUB_STEP_SUMMARY
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "---" >> $GITHUB_STEP_SUMMARY
-          echo "**Analysis:** Check if the plan output above shows 'Plan: X to add, Y to change, Z to destroy'" >> $GITHUB_STEP_SUMMARY
+          echo "$summary" >> $GITHUB_STEP_SUMMARY
 
       - name: Final Result Check
         run: |
