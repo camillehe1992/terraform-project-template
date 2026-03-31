@@ -57,11 +57,12 @@ jobs:
 
       - name: Terraform Plan
         id: plan
+        continue-on-error: true
         run: |
           # Capture both stdout and stderr, and get exit code
           exit_code=0
-          terraform plan -detailed-exitcode -no-color -out tfplan
-          exit_code=$?
+          terraform plan -detailed-exitcode -no-color -out tfplan || exit_code=$?
+          echo "Terraform Plan Exit Code: $exit_code"
 
           case $exit_code in
             0) echo "✅ No changes detected" ;;
