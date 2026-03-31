@@ -94,21 +94,15 @@ jobs:
             echo "## 🚀 Terraform Plan Summary"
             echo ""
             echo "**Environment:** $ENVIRONMENT"
-            echo "**Trigger:** $TRIGGER_TYPE"
-            echo "**Status:** $([ $exit_code -eq 0 ] && echo "✅ No changes" || [ $exit_code -eq 2 ] && echo "✅ Changes detected" || echo "❌ Plan failed")"
+            echo "**Trigger On:** $TRIGGER_TYPE"
             echo "**Exit Code:** $exit_code"
+            echo "**Status:** $plan_status"
             echo ""
             echo "### 📋 Plan Details"
             echo ""
             echo '```terraform'
             echo "$plan_output"
             echo '```'
-            echo ""
-            echo "### 📊 Resource Summary"
-            echo ""
-            echo "- **Resources to add:** $(echo "$plan_output" | grep -c '^ *+ *' || echo 0)"
-            echo "- **Resources to change:** $(echo "$plan_output" | grep -c '^ *~ *' || echo 0)"
-            echo "- **Resources to destroy:** $(echo "$plan_output" | grep -c '^ *- *' || echo 0)"
             echo ""
           } >> $GITHUB_STEP_SUMMARY
 
@@ -126,7 +120,9 @@ jobs:
     needs: terraform-plan
     # Requires approval if environment protection is configured
     environment: ${{ inputs.environment || 'dev' }}
-    if: needs.terraform-plan.outputs.exit_code == '2' && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+    if: |
+      needs.terraform-plan.outputs.exit_code == '2' &&
+      (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
     defaults:
       run:
         working-directory: ./terraform

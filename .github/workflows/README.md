@@ -45,11 +45,3 @@ Configure environment protection rules for the `production` environment in GitHu
    - Environment secrets (if needed)
 
 This ensures terraform apply requires manual approval before executing changes.
-
-## Legacy Workflows (Deprecated)
-
-The following workflows are deprecated in favor of the merged workflow:
-- [terraform-plan.yml](./terraform-plan.yml) - Individual plan workflow
-- [terraform-apply.yml](./terraform-apply.yml) - Individual apply workflow
-
-These are kept for reference but should be disabled in GitHub Actions settings.
