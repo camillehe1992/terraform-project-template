@@ -12,7 +12,7 @@ Add below secrets in GitHub Repository Secrets:
 
 Workflow Description:
 - **Single workflow** with two separate jobs: `terraform-plan` and `terraform-apply`
-- Triggered on push on `main` branch, `develop` branch, and pull request events on `main` branch
+- Triggered on push on `main` branch, `develop` branch, and pull request events on `main` branch with paths matching `terraform/**`
 - Manual trigger available via `workflow_dispatch` with environment selection
 - **Plan Job**: Validates and plans Terraform changes
 - **Apply Job**: Executes changes only when plan detects changes (exit code 2) and on main branch or manual trigger
