@@ -31,6 +31,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
         with:
+          terraform_wrapper: true
           terraform_version: "1.14.0"
 
       - name: Configure AWS Credentials via OIDC
@@ -59,18 +60,15 @@ jobs:
         run: |
           # Capture both stdout and stderr, and get exit code
 
-          terraform plan -detailed-exitcode -no-color
-
           exit_code=0
+          terraform plan -detailed-exitcode -no-color -out tfplan || exit_code=$?
 
-          if [ $? -eq 0 ]; then
+          if [ $exit_code -eq 0 ]; then
             echo "✅ No changes detected"
-          elif [ $? -eq 1 ]; then
-            exit_code=1
+          elif [ $exit_code -eq 1 ]; then
             echo "❌ Plan failed"
-          elif [ $? -eq 2 ]; then
+          elif [ $exit_code -eq 2 ]; then
             echo "✅ Changes detected, applying..."
-            exit_code=2
           fi
 
           echo "Terraform Exit Code: $exit_code"
