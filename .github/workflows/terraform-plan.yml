@@ -58,18 +58,22 @@ jobs:
         id: plan
         run: |
           # Capture both stdout and stderr, and get exit code
-          export exit_code=0
-          terraform plan -detailed-exitcode -no-color -out tfplan || export exit_code=$?
+
+          terraform plan -detailed-exitcode -no-color
+
+          exit_code=0
+
+          if [ $? -eq 0 ]; then
+            echo "✅ No changes detected"
+          elif [ $? -eq 1 ]; then
+            exit_code=1
+            echo "❌ Plan failed"
+          elif [ $? -eq 2 ]; then
+            echo "✅ Changes detected, applying..."
+            exit_code=2
+          fi
 
           echo "Terraform Exit Code: $exit_code"
-
-          # Validate exit code is what we expect
-          case $exit_code in
-            0) echo "✅ No changes detected" ;;
-            1) echo "❌ Plan failed" ;;
-            2) echo "✅ Changes detected" ;;
-            *) echo "⚠️  Unexpected exit code: $exit_code" ;;
-          esac
 
           echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
 
