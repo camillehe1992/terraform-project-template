@@ -31,14 +31,13 @@ jobs:
   terraform-plan:
     name: Terraform Plan
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'dev' }}
     defaults:
       run:
         working-directory: ./terraform
     outputs:
       exit_code: ${{ steps.plan.outputs.exit_code }}
       plan_status: ${{ steps.plan.outputs.plan_status }}
-      environment: ${{ steps.plan.outputs.environment }}
-      trigger_type: ${{ steps.plan.outputs.trigger_type }}
 
     steps:
       - name: Checkout code
@@ -89,8 +88,6 @@ jobs:
 
           echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
           echo "plan_status=$plan_status" >> $GITHUB_OUTPUT
-          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
-          echo "trigger_type=$TRIGGER_TYPE" >> $GITHUB_OUTPUT
 
           # Format plan output for GitHub summary
           {
@@ -127,12 +124,12 @@ jobs:
     name: Terraform Apply
     runs-on: ubuntu-latest
     needs: terraform-plan
+    # Requires approval if environment protection is configured
+    environment: ${{ inputs.environment || 'dev' }}
     if: needs.terraform-plan.outputs.exit_code == '2' && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
     defaults:
       run:
         working-directory: ./terraform
-    # Requires approval if environment protection is configured
-    environment: ${{ needs.terraform-plan.outputs.environment }}
 
     steps:
       - name: Checkout code
