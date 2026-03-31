@@ -13,6 +13,7 @@ documentation tools.
 ├── .pre-commit-config.yaml      # Pre-commit hooks configuration
 ├── justfile                     # Task runner commands
 ├── .markdownlint.json           # Markdown linting rules
+├── .markdownlintignore.yaml     # Markdown linting ignore files
 ├── .terraform-lint.yml          # Terraform linting configuration
 ├── .terraform-docs.yml          # Terraform documentation generator config
 ├── .terraform-version.yml       # Terraform version specification
