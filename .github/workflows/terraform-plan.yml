@@ -73,6 +73,7 @@ jobs:
           esac
 
           echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
+          echo "plan_status=$plan_status" >> $GITHUB_OUTPUT
 
           TERRAFORM_PLAN=$(terraform show -no-color tfplan)
 
@@ -93,12 +94,12 @@ jobs:
         run: |
           echo "$SUMMARY" >> $GITHUB_STEP_SUMMARY
 
-      - name: Publish Terraform Analysis to Summary
+      - name: Publish Summary to GitHub Summary
         env:
           EXIT_CODE: ${{ steps.plan.outputs.exit_code }}
           PLAN_STATUS: ${{ steps.plan.outputs.plan_status }}
         run: |
-          echo "### 🔍 Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔍 Summary" >> $GITHUB_STEP_SUMMARY
           echo "- Exit Code: $EXIT_CODE" >> $GITHUB_STEP_SUMMARY
           echo "- Plan Status: $PLAN_STATUS" >> $GITHUB_STEP_SUMMARY
           echo "- Expected: 2 (changes), 0 (no changes), or 1 (error)" >> $GITHUB_STEP_SUMMARY
