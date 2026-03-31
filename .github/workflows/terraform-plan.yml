@@ -58,7 +58,8 @@ jobs:
         id: plan
         run: |
           # Capture both stdout and stderr, and get exit code
-          terraform plan -detailed-exitcode -out tfplan -no-color || export exit_code=$?
+          export exit_code=0
+          terraform plan -detailed-exitcode -no-color -out tfplan || export exit_code=$?
 
           echo "Terraform Exit Code: $exit_code"
 
