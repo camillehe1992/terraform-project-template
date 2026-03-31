@@ -85,13 +85,6 @@ jobs:
           echo "$TERRAFORM_PLAN" >> $GITHUB_OUTPUT
           echo '```' >> $GITHUB_OUTPUT
           echo "</details>" >> $GITHUB_OUTPUT
-
-          echo "### 🔍 Analysis" >> $GITHUB_OUTPUT
-          echo "- Exit Code: $exit_code" >> $GITHUB_OUTPUT
-          echo "- Plan Status: $plan_status" >> $GITHUB_OUTPUT
-          echo "- Expected: 2 (changes), 0 (no changes), or 1 (error)" >> $GITHUB_OUTPUT
-          echo "- Timestamp: $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_OUTPUT
-
           echo "${delimiter}" >> $GITHUB_OUTPUT
 
       - name: Publish Terraform Plan Output to Summary
@@ -99,3 +92,14 @@ jobs:
           SUMMARY: ${{ steps.plan.outputs.summary }}
         run: |
           echo "$SUMMARY" >> $GITHUB_STEP_SUMMARY
+
+      - name: Publish Terraform Analysis to Summary
+        env:
+          EXIT_CODE: ${{ steps.plan.outputs.exit_code }}
+          PLAN_STATUS: ${{ steps.plan.outputs.plan_status }}
+        run: |
+          echo "### 🔍 Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "- Exit Code: $EXIT_CODE" >> $GITHUB_STEP_SUMMARY
+          echo "- Plan Status: $PLAN_STATUS" >> $GITHUB_STEP_SUMMARY
+          echo "- Expected: 2 (changes), 0 (no changes), or 1 (error)" >> $GITHUB_STEP_SUMMARY
+          echo "- Timestamp: $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
