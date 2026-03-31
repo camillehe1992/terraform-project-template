@@ -13,6 +13,9 @@ on:
       environment:
         description: The environment to deploy to
         default: dev
+        enum:
+          - dev
+          - prod
         type: string
 
 permissions:
@@ -28,6 +31,10 @@ env:
   # set default environment to dev for auto triggered workflows
   ENVIRONMENT: ${{ inputs.environment || 'dev' }}
   TRIGGER_TYPE: ${{ github.event_name }}
+  # Terraform state file s3 bucket name
+  S3_TF_BUCKET_NAME: terraform-state-$AWS_ACCOUNT_ID-$AWS_REGION
+  # Terraform state file key
+  S3_TF_KEY: $GITHUB_REPO_NAME/$ENVIRONMENT/terraform.tfstate
 
 jobs:
   terraform-plan:
@@ -63,8 +70,8 @@ jobs:
       - name: Terraform Init
         run: |
           terraform init -reconfigure \
-            -backend-config="bucket=terraform-state-$AWS_ACCOUNT_ID-$AWS_REGION" \
-            -backend-config="key=$GITHUB_REPO_NAME/$ENVIRONMENT/terraform.tfstate" \
+            -backend-config="bucket=$S3_TF_BUCKET_NAME" \
+            -backend-config="key=$S3_TF_KEY" \
             -backend-config="region=$AWS_REGION" \
             -backend-config="encrypt=true" \
             -backend-config="use_lockfile=true"
@@ -148,8 +155,8 @@ jobs:
       - name: Terraform Init
         run: |
           terraform init -reconfigure \
-            -backend-config="bucket=terraform-state-$AWS_ACCOUNT_ID-$AWS_REGION" \
-            -backend-config="key=$GITHUB_REPO_NAME/$ENVIRONMENT/terraform.tfstate" \
+            -backend-config="bucket=$S3_TF_BUCKET_NAME" \
+            -backend-config="key=$S3_TF_KEY" \
             -backend-config="region=$AWS_REGION" \
             -backend-config="encrypt=true" \
             -backend-config="use_lockfile=true"

@@ -6,7 +6,10 @@ Workflow: [terraform-plan-apply.yml](./terraform-plan-apply.yml)
 
 Add below secrets in GitHub Repository Secrets:
 
-- AWS_ACCOUNT_ID (the AWS account ID is used in s3 bucket name, use S3_TF_BUCKET_NAME if you want to use a custom name)
+Note: I use one AWS account for both dev and prod environments, I only need to set the secrets in Repository Secrets.
+If you use different AWS accounts for dev and prod environments, you need to set the secrets in each environment.
+
+- AWS_ACCOUNT_ID (the AWS account ID is used in s3 bucket name, use `S3_TF_BUCKET_NAME` if you want to use a custom one)
 - AWS_REGION (for OIDC authentication)
 - ROLE_TO_ASSUME (for OIDC authentication)
 
@@ -21,7 +24,7 @@ Workflow Description:
 
 - **Simplified Structure**: Single workflow file instead of two separate workflows
 - **Smart Job Dependencies**: Apply job only runs when plan job succeeds and detects changes
-- **Environment Protection**: Apply job uses `production` environment for approval requirements
+- **Environment Protection**: Apply job uses `prod` environment for approval requirements
 - **Comprehensive Logging**: Detailed GitHub step summaries for both plan and apply phases
 - **Resource Optimization**: Eliminates duplicate setup steps between workflows
 
@@ -36,9 +39,9 @@ Workflow Description:
 
 ### Environment Protection (Recommended)
 
-Configure environment protection rules for the `production` environment in GitHub:
+Configure environment protection rules for the `prod` environment in GitHub:
 1. Go to Settings → Environments → New environment
-2. Name: `production`
+2. Name: `prod`
 3. Configure protection rules:
    - Required reviewers (recommended: 1-2 people)
    - Deployment protection rules
