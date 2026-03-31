@@ -31,6 +31,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
         with:
+          # Set terraform_wrapper: false to get the raw exit code
           terraform_wrapper: false
           terraform_version: "1.14.0"
 
@@ -80,11 +81,14 @@ jobs:
       - name: Show Plan Output Summary
         run: |
           echo "## 📋 Terraform Plan Output" >> $GITHUB_STEP_SUMMARY
+
           echo '```terraform' >> $GITHUB_STEP_SUMMARY
           cat << 'EOF' >> $GITHUB_STEP_SUMMARY
           echo ${{ steps.plan.outputs.plan_output }} >> $GITHUB_STEP_SUMMARY
+          EOF
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+
           echo "### 🔍 Analysis" >> $GITHUB_STEP_SUMMARY
           echo "- Exit Code: ${{ steps.plan.outputs.exit_code }}" >> $GITHUB_STEP_SUMMARY
           echo "- Expected: 2 (changes), 0 (no changes), or 1 (error)" >> $GITHUB_STEP_SUMMARY
@@ -95,13 +99,15 @@ jobs:
         run: |
           echo "## 🚀 Terraform Plan Changes Detected" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+
           echo "### 📋 Plan Details" >> $GITHUB_STEP_SUMMARY
           echo '```terraform' >> $GITHUB_STEP_SUMMARY
           cat << 'EOF' >> $GITHUB_STEP_SUMMARY
-          ${{ steps.plan.outputs.plan_output }}
+          echo ${{ steps.plan.outputs.plan_output }} >> $GITHUB_STEP_SUMMARY
           EOF
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+
           echo "### 🔍 Summary" >> $GITHUB_STEP_SUMMARY
           echo "- Plan Status: ✅ Changes detected" >> $GITHUB_STEP_SUMMARY
           echo "- Review required: ⚠️ Yes" >> $GITHUB_STEP_SUMMARY
