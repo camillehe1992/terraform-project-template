@@ -1,134 +1,134 @@
-name: Terraform Validate and Plan
+# name: Terraform Validate and Plan
 
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
-  # allow manual trigger from GitHub Actions UI
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: The environment to deploy to
-        default: dev
-        type: string
+# on:
+#   push:
+#     branches: [main, develop]
+#   pull_request:
+#     branches: [main]
+#   # allow manual trigger from GitHub Actions UI
+#   workflow_dispatch:
+#     inputs:
+#       environment:
+#         description: The environment to deploy to
+#         default: dev
+#         type: string
 
-permissions:
-  contents: read
-  id-token: write
+# permissions:
+#   contents: read
+#   id-token: write
 
-env:
-  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-  AWS_REGION: ${{ secrets.AWS_REGION }}
-  ROLE_TO_ASSUME: ${{ secrets.ROLE_TO_ASSUME }}
-  GITHUB_REPO_NAME: ${{ github.event.repository.name }}
-  # set default environment to dev for auto triggered workflows
-  ENVIRONMENT: ${{ inputs.environment || 'dev' }}
-  TRIGGER_TYPE: ${{ github.event_name }}
+# env:
+#   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+#   AWS_REGION: ${{ secrets.AWS_REGION }}
+#   ROLE_TO_ASSUME: ${{ secrets.ROLE_TO_ASSUME }}
+#   GITHUB_REPO_NAME: ${{ github.event.repository.name }}
+#   # set default environment to dev for auto triggered workflows
+#   ENVIRONMENT: ${{ inputs.environment || 'dev' }}
+#   TRIGGER_TYPE: ${{ github.event_name }}
 
-jobs:
-  terraform:
-    name: Terraform Validate and Plan
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./terraform
+# jobs:
+#   terraform:
+#     name: Terraform Validate and Plan
+#     runs-on: ubuntu-latest
+#     defaults:
+#       run:
+#         working-directory: ./terraform
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v6
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
-        with:
-          # Set terraform_wrapper: false to get the raw exit code
-          terraform_wrapper: false
-          terraform_version: "1.14.0"
+#       - name: Setup Terraform
+#         uses: hashicorp/setup-terraform@v4
+#         with:
+#           # Set terraform_wrapper: false to get the raw exit code
+#           terraform_wrapper: false
+#           terraform_version: "1.14.0"
 
-      - name: Configure AWS Credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
-          aws-region: ${{ env.AWS_REGION }}
+#       - name: Configure AWS Credentials via OIDC
+#         uses: aws-actions/configure-aws-credentials@v6
+#         with:
+#           role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+#           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Terraform Format Check
-        run: terraform fmt -check -recursive
+#       - name: Terraform Format Check
+#         run: terraform fmt -check -recursive
 
-      - name: Terraform Init
-        run: |
-          terraform init -reconfigure \
-            -backend-config="bucket=terraform-state-$AWS_ACCOUNT_ID-$AWS_REGION" \
-            -backend-config="key=$GITHUB_REPO_NAME/$ENVIRONMENT/terraform.tfstate" \
-            -backend-config="region=$AWS_REGION" \
-            -backend-config="encrypt=true" \
-            -backend-config="use_lockfile=true"
+#       - name: Terraform Init
+#         run: |
+#           terraform init -reconfigure \
+#             -backend-config="bucket=terraform-state-$AWS_ACCOUNT_ID-$AWS_REGION" \
+#             -backend-config="key=$GITHUB_REPO_NAME/$ENVIRONMENT/terraform.tfstate" \
+#             -backend-config="region=$AWS_REGION" \
+#             -backend-config="encrypt=true" \
+#             -backend-config="use_lockfile=true"
 
-      - name: Terraform Validate
-        run: terraform validate
+#       - name: Terraform Validate
+#         run: terraform validate
 
-      - name: Terraform Plan
-        id: plan
-        continue-on-error: true
-        run: |
-          # Capture both stdout and stderr, and get exit code
-          exit_code=0
-          terraform plan -detailed-exitcode -no-color -out tfplan || exit_code=$?
-          echo "Terraform Plan Exit Code: $exit_code"
+#       - name: Terraform Plan
+#         id: plan
+#         continue-on-error: true
+#         run: |
+#           # Capture both stdout and stderr, and get exit code
+#           exit_code=0
+#           terraform plan -detailed-exitcode -no-color -out tfplan || exit_code=$?
+#           echo "Terraform Plan Exit Code: $exit_code"
 
-          case $exit_code in
-            0) echo "✅ No changes detected"; plan_status="✅ No Changes Detected" ;;
-            1) echo "❌ Plan failed"; plan_status="❌ Plan Failed" ;;
-            2) echo "✅ Changes detected"; plan_status="✅ Changes Detected" ;;
-            *) echo "⚠️  Unexpected exit code: $exit_code"; plan_status="⚠️ Unknown Exit Code" ;;
-          esac
+#           case $exit_code in
+#             0) echo "✅ No changes detected"; plan_status="✅ No Changes Detected" ;;
+#             1) echo "❌ Plan failed"; plan_status="❌ Plan Failed" ;;
+#             2) echo "✅ Changes detected"; plan_status="✅ Changes Detected" ;;
+#             *) echo "⚠️  Unexpected exit code: $exit_code"; plan_status="⚠️ Unknown Exit Code" ;;
+#           esac
 
-          echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
-          echo "plan_status=$plan_status" >> $GITHUB_OUTPUT
+#           echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
+#           echo "plan_status=$plan_status" >> $GITHUB_OUTPUT
 
-          TERRAFORM_PLAN=$(terraform show -no-color tfplan)
+#           TERRAFORM_PLAN=$(terraform show -no-color tfplan)
 
-          delimiter="$(openssl rand -hex 8)"
-          echo "summary<<${delimiter}" >> $GITHUB_OUTPUT
-          echo "### 🚀 Terraform Plan Output" >> $GITHUB_OUTPUT
-          echo "<details><summary>Click to expand</summary>" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo '```terraform' >> $GITHUB_OUTPUT
-          echo "$TERRAFORM_PLAN" >> $GITHUB_OUTPUT
-          echo '```' >> $GITHUB_OUTPUT
-          echo "</details>" >> $GITHUB_OUTPUT
-          echo "${delimiter}" >> $GITHUB_OUTPUT
+#           delimiter="$(openssl rand -hex 8)"
+#           echo "summary<<${delimiter}" >> $GITHUB_OUTPUT
+#           echo "### 🚀 Terraform Plan Output" >> $GITHUB_OUTPUT
+#           echo "<details><summary>Click to expand</summary>" >> $GITHUB_OUTPUT
+#           echo "" >> $GITHUB_OUTPUT
+#           echo '```terraform' >> $GITHUB_OUTPUT
+#           echo "$TERRAFORM_PLAN" >> $GITHUB_OUTPUT
+#           echo '```' >> $GITHUB_OUTPUT
+#           echo "</details>" >> $GITHUB_OUTPUT
+#           echo "${delimiter}" >> $GITHUB_OUTPUT
 
-      - name: Publish Terraform Plan Output to Summary
-        env:
-          SUMMARY: ${{ steps.plan.outputs.summary }}
-        run: |
-          echo "$SUMMARY" >> $GITHUB_STEP_SUMMARY
+#       - name: Publish Terraform Plan Output to Summary
+#         env:
+#           SUMMARY: ${{ steps.plan.outputs.summary }}
+#         run: |
+#           echo "$SUMMARY" >> $GITHUB_STEP_SUMMARY
 
-      - name: Publish Summary to GitHub Summary
-        env:
-          EXIT_CODE: ${{ steps.plan.outputs.exit_code }}
-          PLAN_STATUS: ${{ steps.plan.outputs.plan_status }}
-        run: |
-          echo "### 🔍 Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- Environment: $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
-          echo "- Trigger Type: $TRIGGER_TYPE" >> $GITHUB_STEP_SUMMARY
-          echo "- Exit Code: $EXIT_CODE" >> $GITHUB_STEP_SUMMARY
-          echo "- Plan Status: $PLAN_STATUS" >> $GITHUB_STEP_SUMMARY
-          echo "- Expected: 2 (changes), 0 (no changes), or 1 (error)" >> $GITHUB_STEP_SUMMARY
-          echo "- Timestamp: $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+#       - name: Publish Summary to GitHub Summary
+#         env:
+#           EXIT_CODE: ${{ steps.plan.outputs.exit_code }}
+#           PLAN_STATUS: ${{ steps.plan.outputs.plan_status }}
+#         run: |
+#           echo "### 🔍 Summary" >> $GITHUB_STEP_SUMMARY
+#           echo "- Environment: $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+#           echo "- Trigger Type: $TRIGGER_TYPE" >> $GITHUB_STEP_SUMMARY
+#           echo "- Exit Code: $EXIT_CODE" >> $GITHUB_STEP_SUMMARY
+#           echo "- Plan Status: $PLAN_STATUS" >> $GITHUB_STEP_SUMMARY
+#           echo "- Expected: 2 (changes), 0 (no changes), or 1 (error)" >> $GITHUB_STEP_SUMMARY
+#           echo "- Timestamp: $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
 
-      - name: Upload Plan Artifact
-        if: steps.plan.outputs.exit_code == '2'
-        uses: actions/upload-artifact@v4
-        with:
-          name: terraform-plan-${{ github.run_id }}
-          path: ./terraform/tfplan
-          retention-days: 1
+#       - name: Upload Plan Artifact
+#         if: steps.plan.outputs.exit_code == '2'
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: terraform-plan-${{ github.run_id }}
+#           path: ./terraform/tfplan
+#           retention-days: 1
 
-      - name: Set Job Outputs
-        id: job-outputs
-        run: |
-          echo "exit_code=${{ steps.plan.outputs.exit_code }}" >> $GITHUB_OUTPUT
-          echo "plan_status=${{ steps.plan.outputs.plan_status }}" >> $GITHUB_OUTPUT
-          echo "environment=${ENVIRONMENT}" >> $GITHUB_OUTPUT
-          echo "trigger_type=${TRIGGER_TYPE}" >> $GITHUB_OUTPUT
+#       - name: Set Job Outputs
+#         id: job-outputs
+#         run: |
+#           echo "exit_code=${{ steps.plan.outputs.exit_code }}" >> $GITHUB_OUTPUT
+#           echo "plan_status=${{ steps.plan.outputs.plan_status }}" >> $GITHUB_OUTPUT
+#           echo "environment=${ENVIRONMENT}" >> $GITHUB_OUTPUT
+#           echo "trigger_type=${TRIGGER_TYPE}" >> $GITHUB_OUTPUT

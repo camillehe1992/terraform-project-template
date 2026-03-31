@@ -1,8 +1,8 @@
 # Setup GitHub Actions Workflows
 
-## Terraform Plan Workflow
+## Terraform Plan and Apply Workflow (Merged)
 
-Workflow: [terraform-plan.yml](./terraform-plan.yml)
+Workflow: [terraform-plan-apply.yml](./terraform-plan-apply.yml)
 
 Add below secrets in GitHub Repository Secrets:
 
@@ -11,29 +11,28 @@ Add below secrets in GitHub Repository Secrets:
 - ROLE_TO_ASSUME (for OIDC authentication)
 
 Workflow Description:
+- **Single workflow** with two separate jobs: `terraform-plan` and `terraform-apply`
 - Triggered on push on `main` branch, `develop` branch, and pull request events on `main` branch
-- Validate Terraform code
-- Plan Terraform changes
-- Add plan output and analysis result to GitHub summary for easy review
-- Upload plan artifact when changes are detected
-- Set job outputs for downstream workflows
+- Manual trigger available via `workflow_dispatch` with environment selection
+- **Plan Job**: Validates and plans Terraform changes
+- **Apply Job**: Executes changes only when plan detects changes (exit code 2) and on main branch or manual trigger
 
-## Terraform Apply Workflow
+### Key Features
 
-Workflow: [terraform-apply.yml](./terraform-apply.yml)
+- **Simplified Structure**: Single workflow file instead of two separate workflows
+- **Smart Job Dependencies**: Apply job only runs when plan job succeeds and detects changes
+- **Environment Protection**: Apply job uses `production` environment for approval requirements
+- **Comprehensive Logging**: Detailed GitHub step summaries for both plan and apply phases
+- **Resource Optimization**: Eliminates duplicate setup steps between workflows
 
-Prerequisites:
-- Same secrets as terraform-plan workflow
-- Environment protection rules configured for `production` environment (recommended)
+### Job Flow
 
-Workflow Description:
-- Triggered automatically after terraform-plan workflow completes successfully
-- Only executes when terraform plan detects changes (exit code 2)
-- Supports environment approval process for production deployments
-- Downloads plan artifact from previous workflow run
-- Executes terraform apply with the approved plan
-- Provides detailed apply results in GitHub summary
-- Includes comprehensive error handling and status reporting
+1. **terraform-plan**: Always runs first, validates and plans changes
+2. **terraform-apply**: Only runs if:
+   - Plan job completed successfully
+   - Changes were detected (exit code = 2)
+   - On main branch or manual workflow trigger
+   - Passes environment approval (if configured)
 
 ### Environment Protection (Recommended)
 
@@ -46,3 +45,11 @@ Configure environment protection rules for the `production` environment in GitHu
    - Environment secrets (if needed)
 
 This ensures terraform apply requires manual approval before executing changes.
+
+## Legacy Workflows (Deprecated)
+
+The following workflows are deprecated in favor of the merged workflow:
+- [terraform-plan.yml](./terraform-plan.yml) - Individual plan workflow
+- [terraform-apply.yml](./terraform-apply.yml) - Individual apply workflow
+
+These are kept for reference but should be disabled in GitHub Actions settings.
