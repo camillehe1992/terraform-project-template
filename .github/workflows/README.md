@@ -1,6 +1,6 @@
 # Setup GitHub Actions Workflows
 
-## Terraform Plan and Apply Workflow (Merged)
+## Terraform Plan and Apply Workflow
 
 Workflow: [terraform-plan-apply.yml](./terraform-plan-apply.yml)
 
